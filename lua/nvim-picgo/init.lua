@@ -32,21 +32,18 @@ local function generate_timestamped_random_name()
         current_time.min,
         current_time.sec
     )
-
-    math.randomseed(os.time())
-    local random_number = math.random(0, 99999)
-    return timestamp .. string.format("%05d", random_number)
+    return timestamp
 end
 
 local function generate_temporary_file(mime_type)
     local temp_dir = os.getenv("TMPDIR")
         or os.getenv("TEMP")
         or os.getenv("TMP")
-        or "/tmp"
+        or "/tmp" 
 
     local path_separator = package.config:sub(1, 1) -- 获取路径分隔符
 
-    random_filename = ("%s%simage-%s.%s"):format(
+    random_filename = ("%s%s%s.%s"):format(
         temp_dir,
         path_separator,
         generate_timestamped_random_name(),
@@ -73,12 +70,20 @@ local function notice(state)
         end
     end
 end
+-- 替换 raw.githubusercontent.com 为 jsDelivr CDN 链接
+local function to_jsdelivr_url(url)
+    return url:gsub(
+        "^https://raw%.githubusercontent%.com/([^/]+)/([^/]+)/([^/]+)/(.*)",
+        "https://cdn.jsdelivr.net/gh/%1/%2@%3/%4"
+    )
+end
+
 
 local function stdout_callbackfn(job_id, data, _type)
     if default_config.debug then
         vim.print(data)
     end
-
+    data[2] = to_jsdelivr_url(data[2])
     for _, err in ipairs(stop_jobs_message) do
         if data[1]:match(err) then
             notice(false)
@@ -180,14 +185,19 @@ function nvim_picgo.upload_clipboard()
 
         for _, mime_type in ipairs(allowed_types) do
             local has_image = vim.fn.system(
-                ("wl-paste --list-types | grep -i image/%s"):format(mime_type)
+                ("wl-paste --list-types | grep -qi image/%s; echo $?"):format(
+                    mime_type
+                )
             )
 
-            if vim.fn.trim(has_image) ~= "" then
+            if vim.fn.trim(has_image) ~= "1" then
                 generate_temporary_file(mime_type)
 
                 os.execute(
-                    ("wl-paste --type image/%s > %s"):format(mime_type, random_filename)
+                    ("wl-paste --no-newline --type image/%s > %s"):format(
+                        mime_type,
+                        random_filename
+                    )
                 )
 
                 vim.fn.jobstart({ "picgo", "u", random_filename }, {
@@ -213,7 +223,6 @@ function nvim_picgo.upload_clipboard()
         on_exit = onexit_callbackfn,
     })
 end
-
 
 function nvim_picgo.upload_imagefile()
     local image_path = vim.fn.input("Image path: ")
