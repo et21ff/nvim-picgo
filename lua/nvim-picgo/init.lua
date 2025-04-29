@@ -32,7 +32,10 @@ local function generate_timestamped_random_name()
         current_time.min,
         current_time.sec
     )
-    return timestamp
+
+    math.randomseed(os.time())
+    local random_number = math.random(0, 99999)
+    return timestamp .. string.format("%05d", random_number)
 end
 
 local function generate_temporary_file(mime_type)
