@@ -185,13 +185,27 @@ function nvim_picgo.setup(conf)
     )
 end
 
+local function is_wayland()
+    local wayland = os.getenv("WAYLAND_DISPLAY")
+    if wayland then
+        return true
+    end
+    return false
+end
+
 function nvim_picgo.upload_clipboard()
     if default_config.temporary_storage then
         local allowed_types = { "png", "jpg", "gif" }
 
+        local command = { "xclip -selection clipboard -t image/%s -o 2>/dev/null; echo $?", "xclip -selection clipboard -t image/%s -o > %s" }
+
+        if is_wayland() then
+            command = { "wl-paste --list-types | grep -qi image/%s; echo $?", "wl-paste --no-newline --type image/%s > %s"}
+        end
+
         for _, mime_type in ipairs(allowed_types) do
             local has_image = vim.fn.system(
-                ("wl-paste --list-types | grep -qi image/%s; echo $?"):format(
+                (command[1]):format(
                     mime_type
                 )
             )
@@ -200,7 +214,7 @@ function nvim_picgo.upload_clipboard()
                 generate_temporary_file(mime_type)
 
                 os.execute(
-                    ("wl-paste --no-newline --type image/%s > %s"):format(
+                    (command[2]):format(
                         mime_type,
                         random_filename
                     )
