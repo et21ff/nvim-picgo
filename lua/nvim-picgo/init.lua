@@ -85,7 +85,11 @@ local function stdout_callbackfn(job_id, data, _type)
     if default_config.debug then
         vim.print(data)
     end
-    data[2] = to_jsdelivr_url(data[2])
+
+    if default_config.need_jsdeliver then
+      data[2] = to_jsdelivr_url(data[2])
+    end
+
     for _, err in ipairs(stop_jobs_message) do
         if data[1]:match(err) then
             notice(false)
