@@ -180,19 +180,14 @@ function nvim_picgo.upload_clipboard()
 
         for _, mime_type in ipairs(allowed_types) do
             local has_image = vim.fn.system(
-                ("xclip -selection clipboard -t image/%s -o 2>/dev/null; echo $?"):format(
-                    mime_type
-                )
+                ("wl-paste --list-types | grep -i image/%s"):format(mime_type)
             )
 
-            if vim.fn.trim(has_image) ~= "1" then
+            if vim.fn.trim(has_image) ~= "" then
                 generate_temporary_file(mime_type)
 
                 os.execute(
-                    ("xclip -selection clipboard -t image/%s -o > %s"):format(
-                        mime_type,
-                        random_filename
-                    )
+                    ("wl-paste --type image/%s > %s"):format(mime_type, random_filename)
                 )
 
                 vim.fn.jobstart({ "picgo", "u", random_filename }, {
@@ -218,6 +213,7 @@ function nvim_picgo.upload_clipboard()
         on_exit = onexit_callbackfn,
     })
 end
+
 
 function nvim_picgo.upload_imagefile()
     local image_path = vim.fn.input("Image path: ")
